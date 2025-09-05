@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import torch
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from torch.utils.data import Dataset, DataLoader
-from sklearn.utils.class_weight import compute_class_weight
+#from sklearn.utils.class_weight import compute_class_weight
 
 '''
 ###############################################################################
@@ -212,7 +212,7 @@ if __name__ == "__main__":
     cropSize = 100  # crop/pad all accepted seqs to this length
     numBatches = 1  # if non-zero, ignore batchSize and set to N/numBatches
     batchSize = 0  # only use if numBatches = 0
-    numberEpochs = 50
+    numberEpochs = 5
     reportCycle = 1
     learningRate = 0.2
 #    classWeights = ( 2.975837 , 4.283632 , 2.3228085 )  # (H, E, C)
@@ -230,8 +230,10 @@ if __name__ == "__main__":
         fileDirectory, inputTest), lengths=lengthLimits, crop=cropSize)
     xTrain, yTrain = dataReader(os.path.join(
         fileDirectory, inputTrain), lengths=lengthLimits, crop=cropSize)
+    
     dataTrain = seqDataset(xTrain, yTrain)
 
+    # print data/batch stats
     print("DATA SET ")
     rows = ['training data', 'training labels', 'test data', 'test labels']
     ds = [xTrain, yTrain, xTest, yTest]
@@ -239,7 +241,6 @@ if __name__ == "__main__":
     for r, d in zip(rows, ds):
         a, b, c = d.shape
         print(f"{r:<20} {a:<15} {b:<15} {c:<15}")
-
     if numBatches > 0:
         batchSize = int(len(xTrain)/numBatches)
     else:
@@ -261,11 +262,10 @@ if __name__ == "__main__":
         total_params += params
     print("{0:20} {1:<20}".format("TOTAL", total_params))
     
-    # create weights for classes--a tensor of same shape as one lab entry,
-    # i.e., number of classes X crop length
-    junk, nClasses, nLengths = yTrain.shape
-    ww=np.ones([nClasses,nLengths])*np.array(classWeights)[:,np.newaxis]
-    weights = torch.tensor(ww)
+    # create weights for classes--should broadcast correctly in loss calc
+    numClasses = yTrain.sum( dim=(0,2) )  # sums over entries and AA positions
+    weights = numClasses.sum()/numClasses/3 # dims=(3)
+    weights.unsqueeze_(1)   # add dim in place to get dims = (3,1) 
 
     # run cycles of optimization
     plt.figure(1)
@@ -278,11 +278,12 @@ if __name__ == "__main__":
             
             # calculate and display loss, then back propagate
             xx, yy = batch[0], batch[1]
+            optimizer.zero_grad()
             prediction = model(xx)
             lossTerms = -yy*torch.log(prediction)*weights
             loss = lossTerms.sum()/yy.shape.numel() # normalize by num of AAs?
 #            loss = lossTerms.sum()
-            optimizer.zero_grad()
+
             loss.backward()
             optimizer.step()
             
