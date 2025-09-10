@@ -3,6 +3,8 @@
 """
 Created on Sun May 11 10:13:16 2025
 
+creates a data file that can be used by CNNonelength
+
 @author: allen
 """
 
@@ -11,14 +13,14 @@ from sklearn.model_selection import train_test_split
 
 inputFile = 'data/2018-06-06-pdb-intersect-pisces.csv'
 
-minLength = 100
-maxLength = 400
+minLength = 50
+maxLength = 600
 testSize = 0.10
 valSize = 0.10
 
-outputTrain = 'data/pisces100to400.train.txt'
-outputVal = 'data/pisces100to400.val.txt'
-outputTest = 'data/pisces100to400.test.txt'
+outputTrain = 'data/pisces50to600.train.txt'
+outputVal = 'data/pisces50to600.val.txt'
+outputTest = 'data/pisces50to600.test.txt'
 
 ####################################################################
 df = pd.read_csv(inputFile)
