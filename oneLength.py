@@ -63,9 +63,9 @@ fileDirectory = 'data'
 
 # load data
 xTest, yTest = dataReader(os.path.join(
-    fileDirectory, inputTest), lengths=lengthLimits, crop=cropSize, swap=True)
+    fileDirectory, inputTest), lengths=lengthLimits, crop=cropSize, swap=False)
 xTrain, yTrain = dataReader(os.path.join(
-    fileDirectory, inputTrain), lengths=lengthLimits, crop=cropSize, swap=True)
+    fileDirectory, inputTrain), lengths=lengthLimits, crop=cropSize, swap=False)
 dataTrain = seqDataset(xTrain, yTrain) # needed for batches
 
 # print data/batch stats

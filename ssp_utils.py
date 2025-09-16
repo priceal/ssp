@@ -58,7 +58,7 @@ def oneHot(string, vocab="ARNDCEQGHILKMFPSTWYV"):
     return np.array(result)
 
 #######################################################################
-def dataReader(filePath, lengths=(0,800), crop=800):
+def dataReader(filePath, lengths=(0,800), crop=800, swap=False):
     '''
     reads text file of protein sequences with ss assignments.
     format of file should be each entry 2 lines, the first is the sequence
@@ -97,14 +97,18 @@ def dataReader(filePath, lengths=(0,800), crop=800):
             seqOneHot.append(oneHot(sequence, vocab="ARNDCEQGHILKMFPSTWYV"))
             tarOneHot.append(oneHot(target, vocab="HEC"))
 
-    # arrange in arrays of shape (Nseqs(0),Nclasses(1),seqlength(2) . Note, 
-    # converting lists to arrays w/o swapaxes yields indices in order of
-    # sequence number(0), sequence position(1), one hot code(2). Eg, if 
-    # there are 1000 sequences in data, and crop=800, then size is 
-    # (1000,800,20) for protein sequence and (1000,800,3) for ss data. We need
-    # to swap axes 1&2 for CNN, so shapes are (1000,20,800) and (1000,3,800)
-    x = np.array(seqOneHot).swapaxes(1, 2)
-    y = np.array(tarOneHot).swapaxes(1, 2)
+    if swap:
+        # arrange in arrays of shape (Nseqs(0),Nclasses(1),seqlength(2) . Note, 
+        # converting lists to arrays w/o swapaxes yields indices in order of
+        # sequence number(0), sequence position(1), one hot code(2). Eg, if 
+        # there are 1000 sequences in data, and crop=800, then size is 
+        # (1000,800,20) for protein sequence and (1000,800,3) for ss data. We need
+        # to swap axes 1&2 for CNN, so shapes are (1000,20,800) and (1000,3,800)
+        x = np.array(seqOneHot).swapaxes(1, 2)
+        y = np.array(tarOneHot).swapaxes(1, 2)
+    else:
+        x = np.array(seqOneHot)
+        y = np.array(tarOneHot)
 
     # return tensors
     return torch.tensor(x, dtype=torch.float32, requires_grad=False), \
