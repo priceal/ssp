@@ -34,7 +34,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 from ssp_utils import dataReader, seqDataset
-from model_20250912B import cnnModel
+from model_20250916B import cnnModel
 
 '''
 ###############################################################################
@@ -47,8 +47,8 @@ lengthLimits = (400,600)  # screen data for seq lengths in this interval
 cropSize = 400  # crop/pad all accepted seqs to this length
 numBatches = 0  # if non-zero, ignore batchSize and set to N/numBatches
 batchSize = 10  # only use if numBatches = 0
-numberEpochs = 20
-reportCycle = 100
+numberEpochs = 3
+reportCycle = 10
 learningRate = 0.1
 weights = 'calc'    # None: unweighted. 
                     # (WH, WE, WC): use fixed weights
@@ -63,9 +63,9 @@ fileDirectory = 'data'
 
 # load data
 xTest, yTest = dataReader(os.path.join(
-    fileDirectory, inputTest), lengths=lengthLimits, crop=cropSize, swap=False)
+    fileDirectory, inputTest), lengths=lengthLimits, crop=cropSize, swap=True)
 xTrain, yTrain = dataReader(os.path.join(
-    fileDirectory, inputTrain), lengths=lengthLimits, crop=cropSize, swap=False)
+    fileDirectory, inputTrain), lengths=lengthLimits, crop=cropSize, swap=True)
 dataTrain = seqDataset(xTrain, yTrain) # needed for batches
 
 # print data/batch stats

@@ -71,6 +71,8 @@ def dataReader(filePath, lengths=(0,800), crop=800, swap=False):
         Defaults to (0,800).
         crop (integer, optional): all output sequences will be this lengthm, 
         either cropped or padded. Defaults to 800.
+        swap (boolean): True to put output in correct order (N,channels,position)
+        for CNN modules
 
     Returns:
         tensor, tensor: the first is the one-hot rep of the sequence of size

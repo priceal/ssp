@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['embedding_20250912A.py', 'CNNoneLength.py', 'model_20250912B.py', '../../anaconda3/lib/python3.12/site-packages/torch/nn/modules/module.py']
+recent_files = ['oneLength.py', 'attention.py', 'model_20250912B.py', 'ssp_utils.py', 'model_20250916A.py']
 
 [main]
 version = 0.2.0
