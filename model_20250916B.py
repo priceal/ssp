@@ -22,8 +22,8 @@ class cnnModel(torch.nn.Module):
         super(cnnModel, self).__init__()
 
         # embedding dimension = ed, key/query space dim = kd
-        self.ed = 5
-        self.kd = 3
+        self.ed = 7
+        self.kd = 4
        
         # embedding transformation, input tensor must have dims (*,20), output
         # will have (*,ed). since CNN uses (*,channels,length), must swap last
@@ -44,6 +44,7 @@ class cnnModel(torch.nn.Module):
                                       out_channels=5,
                                       kernel_size=11,
                                       stride=1,
+                                      bias=False,
                                       padding='same')
         self.relu1 = torch.nn.ReLU()
 
@@ -51,6 +52,7 @@ class cnnModel(torch.nn.Module):
                                       out_channels=5,
                                       kernel_size=11,
                                       stride=1,
+                                      bias=False,
                                       padding='same')
         self.relu2 = torch.nn.ReLU()
 
@@ -58,6 +60,7 @@ class cnnModel(torch.nn.Module):
                                       out_channels=5,
                                       kernel_size=11,
                                       stride=1,
+                                      bias=False,
                                       padding='same')
         self.relu3 = torch.nn.ReLU()
 
@@ -65,6 +68,7 @@ class cnnModel(torch.nn.Module):
                                       out_channels=3,
                                       kernel_size=11,
                                       stride=1,
+                                      bias=False, 
                                       padding='same')
         
         self.softMax4 = torch.nn.Softmax(dim=1)
@@ -90,7 +94,7 @@ class cnnModel(torch.nn.Module):
         
         # for attention we need contraction of last dim of weights (source)
         # with second to last dim of v (size=embedding dim), add result to x
-        x += weights @ v
+        x = x + weights @ v
          
         # proceed with CNN layers, swap last two indices to get back to 
         # (N,channels,length) order for first layer
