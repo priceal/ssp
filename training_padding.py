@@ -34,7 +34,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 from ssp_utils import dataReader, seqDataset
-from model_20250922D import cnnModel
+from model_20250922C_pad import cnnModel
 
 '''
 ###############################################################################
@@ -47,11 +47,11 @@ lengthLimits = (100,400)  # screen data for seq lengths in this interval
 cropSize = 100  # crop/pad all accepted seqs to this length
 numBatches = 0 # if non-zero, ignore batchSize and set to N/numBatches
 batchSize = 256  # only use if numBatches = 0
-numberEpochs = 30
+numberEpochs = 3
 reportCycle = 30
 learningRate = 0.1
 
-weights = 'calc'    # None: unweighted. 
+weights = (0,1,1,1)    # None: unweighted. 
                     # (WH, WE, WC): use fixed weights
                     # 'calc' : calculated weights to use
                 
@@ -82,7 +82,7 @@ if numBatches > 0:
 else:
     numBatches = int(len(xTrain)/batchSize)
 numClasses = yTrain.sum( dim=(0,2) ) 
-targetLabels = ['H', 'E', 'C']
+targetLabels = ['_','H', 'E', 'C']
 # create weights for classes--should broadcast correctly in loss calc
 if not weights:
     weights=torch.tensor((1.0,1.0,1.0))
@@ -103,7 +103,7 @@ print('size of batches:', batchSize)
 dataloader = DataLoader(dataTrain, batch_size=batchSize, shuffle=True)
 
 # create model
-#model = cnnModel()
+model = cnnModel()
 print('\nMODEL ')
 print("{0:20} {1:20}".format("MODULES", "PARAMETERS"))
 total_params = 0

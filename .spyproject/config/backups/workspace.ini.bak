@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['model_20250916B.py', 'model_20250916A.py', 'oneLength.py', 'ssp_utils.py', 'attention.py']
+recent_files = ['model_20250916B.py', 'oneLength.py', 'model_20250917A.py', 'model_20250908A.py']
 
 [main]
 version = 0.2.0

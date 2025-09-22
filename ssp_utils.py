@@ -4,22 +4,7 @@
 Created on Sun Apr  6 10:24:09 2025
 @author: allen
 
-secondary structure classification model. classifies protein sequences at 
-residue level as 
-
-E - strand
-H - helix
-C - coil/turn
-
-uses class weights to correct imbalance in data
-
-features to include:
-    1) employ torch optimization tools      v/
-    2) use scikit learn metrics             v/
-    3) split test/train                     (pre-calculated)
-    4) employ batch optimization            v/
-    5) drop out back propagation
-    6) use weights to correct imbalance     v/
+utilities for ssp
     
 """
 import numpy as np
@@ -69,7 +54,7 @@ def dataReader(filePath, lengths=(0,800), crop=800, swap=False):
         filePath (string): input file path.
         lengths (tuple, optional): (min,max) rejects sequences outside range
         Defaults to (0,800).
-        crop (integer, optional): all output sequences will be this lengthm, 
+        crop (integer, optional): all output sequences will be this length, 
         either cropped or padded. Defaults to 800.
         swap (boolean): True to put output in correct order (N,channels,position)
         for CNN modules
@@ -91,13 +76,14 @@ def dataReader(filePath, lengths=(0,800), crop=800, swap=False):
             target = f.readline()[:-1]
             if not minLen<=len(sequence)<=maxLen:   # reject if outside range
                 continue
-            # reduce to crop or fill in with spaces to crop
+            # reduce to crop or fill in with spaces to crop, padding on right
             sequence = f'{sequence[:crop]:<{crop}}'   
             target = f'{target[:crop]:<{crop}}'
             # convert data strings to one-hot, add to lists of one-hot reps, 
-            # creating lists of crop x len(vocab) arrays.
-            seqOneHot.append(oneHot(sequence, vocab="ARNDCEQGHILKMFPSTWYV"))
-            tarOneHot.append(oneHot(target, vocab="HEC"))
+            # creating lists of crop x len(vocab) arrays. note on padding:
+            # space is recognized as padding and sent to one hot vector <0>
+            seqOneHot.append(oneHot(sequence, vocab=" ARNDCEQGHILKMFPSTWYV"))
+            tarOneHot.append(oneHot(target, vocab=" HEC"))
 
     if swap:
         # arrange in arrays of shape (Nseqs(0),Nclasses(1),seqlength(2) . Note, 
