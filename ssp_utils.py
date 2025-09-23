@@ -82,8 +82,8 @@ def dataReader(filePath, lengths=(0,800), crop=800, swap=False):
             # convert data strings to one-hot, add to lists of one-hot reps, 
             # creating lists of crop x len(vocab) arrays. note on padding:
             # space is recognized as padding and sent to one hot vector <0>
-            seqOneHot.append(oneHot(sequence, vocab=" ARNDCEQGHILKMFPSTWYV"))
-            tarOneHot.append(oneHot(target, vocab=" HEC"))
+            seqOneHot.append(oneHot(sequence, vocab="ARNDCEQGHILKMFPSTWYV"))
+            tarOneHot.append(oneHot(target, vocab="HEC"))
 
     if swap:
         # arrange in arrays of shape (Nseqs(0),Nclasses(1),seqlength(2) . Note, 

@@ -34,7 +34,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 from ssp_utils import dataReader, seqDataset
-from model_20250922D import cnnModel
+from model_20250923_pad import cnnModel
 
 '''
 ###############################################################################

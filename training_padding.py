@@ -34,7 +34,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 from ssp_utils import dataReader, seqDataset
-from model_20250922C_pad import cnnModel
+from model_20250923_pad import cnnModel
 
 '''
 ###############################################################################
@@ -43,33 +43,35 @@ from model_20250922C_pad import cnnModel
 '''
 
 # learning parameters
-lengthLimits = (100,400)  # screen data for seq lengths in this interval
-cropSize = 100  # crop/pad all accepted seqs to this length
+lengthLimits = (100,600)  # screen data for seq lengths in this interval
+cropSize = 400  # crop/pad all accepted seqs to this length
 numBatches = 0 # if non-zero, ignore batchSize and set to N/numBatches
 batchSize = 256  # only use if numBatches = 0
-numberEpochs = 3
-reportCycle = 30
+numberEpochs = 50
+reportCycle = 29
 learningRate = 0.1
 
-weights = (0,1,1,1)    # None: unweighted. 
+refine = True   # creates new model if False
+
+weights = 'calc'    # None: unweighted. 
                     # (WH, WE, WC): use fixed weights
                     # 'calc' : calculated weights to use
                 
 # file to load and optional file directory---can leave undefined '' or '.'
-inputTrain = 'pisces100to400.train.txt'
-inputTest = 'pisces100to400.test.txt'
+inputTrain = 'pisces50to600.train.txt'
+inputTest = 'pisces50to600.test.txt'
 fileDirectory = 'data'
 
 ###########################################################################
 
-# load data
+# load data -------------------------------------------
 xTest, yTest = dataReader(os.path.join(
     fileDirectory, inputTest), lengths=lengthLimits, crop=cropSize, swap=True)
 xTrain, yTrain = dataReader(os.path.join(
     fileDirectory, inputTrain), lengths=lengthLimits, crop=cropSize, swap=True)
 dataTrain = seqDataset(xTrain, yTrain) # needed for batches
 
-# print data/batch stats
+# print data/batch stats ------------------------------------
 print("DATA SET ")
 rows = ['training data', 'training labels', 'test data', 'test labels']
 ds = [xTrain, yTrain, xTest, yTest]
@@ -82,7 +84,7 @@ if numBatches > 0:
 else:
     numBatches = int(len(xTrain)/batchSize)
 numClasses = yTrain.sum( dim=(0,2) ) 
-targetLabels = ['_','H', 'E', 'C']
+targetLabels = ['H', 'E', 'C']
 # create weights for classes--should broadcast correctly in loss calc
 if not weights:
     weights=torch.tensor((1.0,1.0,1.0))
@@ -91,7 +93,6 @@ elif weights=='calc':
     weights = numClasses.sum()/numClasses/3 # dims=(3)
 else:
     weights = torch.tensor(weights)
-    
 weights.unsqueeze_(1)   # add dim in place to get dims = (3,1) for broadcasting
 print('{:<10} {:<10} {:<10} {:<10} {:<10}'.format('index','label','count','fraction','weight') )
 for i,tl in enumerate(targetLabels):
@@ -102,8 +103,9 @@ print('number of batches:', numBatches)
 print('size of batches:', batchSize)
 dataloader = DataLoader(dataTrain, batch_size=batchSize, shuffle=True)
 
-# create model
-model = cnnModel()
+# create model ----------------------------------------------------
+if not refine:     # if refining pre-existing, don't create new model
+    model = cnnModel()
 print('\nMODEL ')
 print("{0:20} {1:20}".format("MODULES", "PARAMETERS"))
 total_params = 0
@@ -115,7 +117,7 @@ for name, parameter in model.named_parameters():
     total_params += params
 print("{0:20} {1:<20}".format("TOTAL", total_params))
 
-# run cycles of optimization
+# run cycles of optimization ----------------------------------------
 plt.figure(1)
 optimizer = torch.optim.SGD(model.parameters(), lr=learningRate)
 print('\nOPTIMIZATION')
@@ -126,8 +128,11 @@ for i in range(numberEpochs):
         
         # calculate and display loss, then back propagate
         xx, yy = batch[0], batch[1]
+        # make the mask, sum along axis=1 (channels) to get 1 in each valid
+        # position, 0 in  cropped. then add summed dim back (unsqueeze)
+        yymask = ( yy.sum(axis=1) ).unsqueeze_(1)
         prediction = model(xx)
-        lossTerms = -yy*torch.log(prediction)*weights
+        lossTerms = -yy*torch.log(prediction)*weights*yymask
         loss = lossTerms.sum()/yy.shape.numel() # normalize by num of AAs
         optimizer.zero_grad()
         loss.backward()
@@ -148,7 +153,7 @@ for i in range(numberEpochs):
 
 plt.show()
 
-# metrics
+# metrics -------------------------------------------------------
 # must convert probability-logits to one-hots ---
 # convert max logit value to 1, others 0
 print('\nFINAL METRICS')
@@ -157,11 +162,15 @@ xSets = [ xTrain, xTest ]
 ySets = [ yTrain, yTest ]
 for t,xs,ys in zip(titles,xSets,ySets):
 
+    # problem: whenever zero-padding is encountered, argmax returns class 0!
+    # that is checked against some 'random' prediction !!
+    # makes it look worse than it is!
     print(t+' set performance')
+    mask = (ys.sum(axis=1)).flatten()
     yCheck = np.argmax(ys.detach().numpy(), axis=1).flatten()
     prediction = model(xs)
     pCheck = np.argmax(prediction.detach().numpy(), axis=1).flatten()
-    cm = confusion_matrix(yCheck, pCheck)
+    cm = confusion_matrix(yCheck, pCheck, sample_weight=mask)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                   display_labels=targetLabels)
     disp.plot()
