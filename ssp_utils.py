@@ -68,7 +68,7 @@ def encode(string, vocab=" ARNDCEQGHILKMFPSTWYV"):
 
 
 #######################################################################
-def dataReader(filePath, lengths=(0,800), crop=800, onehot=False, swap=False):
+def dataReader(filePath, lengths=(0,800), crop=800, onehot=False):
     '''
     reads text file of protein sequences with ss assignments.
     format of file should be each entry 2 lines, the first is the sequence
@@ -82,8 +82,6 @@ def dataReader(filePath, lengths=(0,800), crop=800, onehot=False, swap=False):
         crop (integer, optional): all output sequences will be this length, 
         either cropped or padded. Defaults to 800.
         onehot (boolean): True returns one hot rep, else numerical encoding
-        swap (boolean): True to put output in correct order (N,channels,position)
-        for CNN modules (only works w/ onehot=True)
 
     Returns:
         tensor, tensor: the first is the one-hot rep of the sequence of size
@@ -114,22 +112,10 @@ def dataReader(filePath, lengths=(0,800), crop=800, onehot=False, swap=False):
             else:
                 seq.append(encode(sequence, vocab=" ARNDCEQGHILKMFPSTWYV"))
                 tar.append(encode(target, vocab=" HEC"))
-    if swap and onehot:
-        # arrange in arrays of shape (Nseqs(0),Nclasses(1),seqlength(2) . Note, 
-        # converting lists to arrays w/o swapaxes yields indices in order of
-        # sequence number(0), sequence position(1), one hot code(2). Eg, if 
-        # there are 1000 sequences in data, and crop=800, then size is 
-        # (1000,800,20) for protein sequence and (1000,800,3) for ss data. We need
-        # to swap axes 1&2 for CNN, so shapes are (1000,20,800) and (1000,3,800)
-        x = np.array(seq).swapaxes(1, 2)
-        y = np.array(tar).swapaxes(1, 2)
-    else:
-        x = np.array(seq)
-        y = np.array(tar)
-
+    
     # return tensors
-    return torch.tensor(x, dtype=torch.int, requires_grad=False), \
-        torch.tensor(y, dtype=torch.int, requires_grad=False)
+    return torch.tensor(np.array(seq), dtype=torch.int, requires_grad=False), \
+        torch.tensor(np.array(tar), dtype=torch.int, requires_grad=False)
 
 ###############################################################################
 class seqDataset(Dataset):

@@ -46,14 +46,15 @@ from model_20250924_embed import cnnModel
 # learning parameters
 lengthLimits = (50,100)  # screen data for seq lengths in this interval
 cropSize = 100  # crop/pad all accepted seqs to this length
+
 numBatches = 0 # if non-zero, ignore batchSize and set to N/numBatches
 batchSize = 256  # only use if numBatches = 0
 numberEpochs = 3
-reportCycle = 29
 learningRate = 0.1
 
-refine = False  # creates new model if False
+reportCycle = 29
 
+refine = False  # creates new model if False
 weights = 'calc'    # None: unweighted. 
                     # (WH, WE, WC): use fixed weights
                     # 'calc' : calculated weights to use
@@ -62,6 +63,8 @@ weights = 'calc'    # None: unweighted.
 inputTrain = 'pisces50to600.train.txt'
 inputTest = 'pisces50to600.test.txt'
 fileDirectory = 'data'
+
+targetLabels = ['H', 'E', 'C']
 
 ###########################################################################
 
@@ -78,17 +81,19 @@ dataTrain = seqDataset(xTrain, yTrain) # needed for batches
 
 # print data/batch stats ------------------------------------
 print("DATA SET")
-rows = ['training data', 'training labels', 'test data', 'test labels']
-ds = [xTrain, yTrain, xTest, yTest]
 print("{:<20} {:<15} {:<15}".format('DATA', 'ENTRIES', 'LENGTH'))
+rows = ['training data', 'test data']
+ds = [xTrain, xTest]
 for r, d in zip(rows, ds):
     a, b = d.shape
     print(f"{r:<20} {a:<15} {b:<15}")
+
+# determine batch size and number of batches -----------------------    
 if numBatches > 0:
     batchSize = int(len(xTrain)/numBatches)
 else:
     numBatches = int(len(xTrain)/batchSize)
-targetLabels = ['H', 'E', 'C']
+
 # create weights for classes--should broadcast correctly in loss calc
 uniqueClasses, numClasses = np.unique(yTrain, return_counts=True)
 uniqueClasses = np.delete( uniqueClasses, np.where(uniqueClasses==0))
@@ -98,7 +103,7 @@ if not weights:
 elif weights=='calc':
     weights = numClasses.sum()/numClasses/3 # dims=(3)
 # add dim in place to get dims = (3,1) for broadcasting
-weights = torch.tensor(weights).unsqueeze_(1)  
+weights = torch.tensor(weights)
 
 print('{:<10} {:<10} {:<10} {:<10} {:<10}'.format('index','label','count','fraction','weight') )
 for i,tl in enumerate(targetLabels):
@@ -126,6 +131,9 @@ print("{0:20} {1:<20}".format("TOTAL", total_params))
 # run cycles of optimization ----------------------------------------
 plt.figure(1)
 optimizer = torch.optim.SGD(model.parameters(), lr=learningRate)
+lossFunc = torch.nn.CrossEntropyLoss( weight=weights,
+                                 ignore_index=-1
+                                 )
 print('\nOPTIMIZATION')
 print('{:10} {:10} {:10} {:10}'.format('epoch','batch','loss-train','loss-test') )
 stepCount = 0
@@ -134,12 +142,15 @@ for i in range(numberEpochs):
         
         # calculate and display loss, then back propagate
         xx, yy = batch[0], batch[1]
+        
         # make the mask, sum along axis=1 (channels) to get 1 in each valid
         # position, 0 in  cropped. then add summed dim back (unsqueeze)
-        yymask = ( yy.sum(axis=1) ).unsqueeze_(1)
         prediction = model(xx)
-        lossTerms = -yy*torch.log(prediction)*weights*yymask
-        loss = lossTerms.sum()/yy.shape.numel() # normalize by num of AAs
+        
+        #lossTerms = -yy*torch.log(prediction)*weights*yymask
+        #loss = lossTerms.sum()/yy.shape.numel() # normalize by num of AAs
+        loss = lossFunc( prediction, yy )
+        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
