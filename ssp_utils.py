@@ -68,7 +68,7 @@ def encode(string, vocab=" ARNDCEQGHILKMFPSTWYV"):
 
 
 #######################################################################
-def dataReader(filePath, lengths=(0,800), crop=800, onehot=False):
+def dataReader(filePath, lengths=(0,800), crop=800, onehot=(False,False)):
     '''
     reads text file of protein sequences with ss assignments.
     format of file should be each entry 2 lines, the first is the sequence
@@ -81,7 +81,8 @@ def dataReader(filePath, lengths=(0,800), crop=800, onehot=False):
         Defaults to (0,800).
         crop (integer, optional): all output sequences will be this length, 
         either cropped or padded. Defaults to 800.
-        onehot (boolean): True returns one hot rep, else numerical encoding
+        onehot (boolean,boolean): True returns one hot rep, else numerical encoding,
+        first for the input data, second for the target
 
     Returns:
         tensor, tensor: the first is the one-hot rep of the sequence of size
@@ -106,16 +107,28 @@ def dataReader(filePath, lengths=(0,800), crop=800, onehot=False):
             # convert data strings to one-hot, add to lists of one-hot reps, 
             # creating lists of crop x len(vocab) arrays. note on padding:
             # space is recognized as padding and sent to one hot vector <0>
-            if onehot:
+            if onehot[0]:
                 seq.append(oneHot(sequence, vocab="ARNDCEQGHILKMFPSTWYV"))
-                tar.append(oneHot(target, vocab="HEC"))
             else:
                 seq.append(encode(sequence, vocab=" ARNDCEQGHILKMFPSTWYV"))
+            if onehot[1]:
+                tar.append(oneHot(target, vocab="HEC"))
+            else:
                 tar.append(encode(target, vocab=" HEC"))
-    
+  
+        if onehot[0]:
+            seqType= torch.float
+        else:
+            seqType= torch.int
+        if onehot[1]:
+            tarType= torch.float
+        else:
+            tarType= torch.int
+
     # return tensors
-    return torch.tensor(np.array(seq), dtype=torch.int, requires_grad=False), \
-        torch.tensor(np.array(tar), dtype=torch.int, requires_grad=False)
+    
+    return torch.tensor(np.array(seq), dtype=seqType, requires_grad=False), \
+        torch.tensor(np.array(tar), dtype=tarType, requires_grad=False)
 
 ###############################################################################
 class seqDataset(Dataset):

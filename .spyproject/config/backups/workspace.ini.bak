@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['training_embedding.py', 'ssp_utils.py', 'model_20250924_embed.py', 'oneLength.py', 'training_padding.py']
+recent_files = ['training_embedding.py', 'ssp_utils.py', 'model_20250925.py', 'oneLength.py', 'training_padding.py', 'data/test.txt']
 
 [main]
 version = 0.2.0

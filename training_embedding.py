@@ -44,11 +44,11 @@ from model_20250924_embed import cnnModel
 '''
 
 # learning parameters
-lengthLimits = (50,100)  # screen data for seq lengths in this interval
-cropSize = 100  # crop/pad all accepted seqs to this length
+lengthLimits = (0,10)  # screen data for seq lengths in this interval
+cropSize = 10  # crop/pad all accepted seqs to this length
 
 numBatches = 0 # if non-zero, ignore batchSize and set to N/numBatches
-batchSize = 256  # only use if numBatches = 0
+batchSize = 1  # only use if numBatches = 0
 numberEpochs = 3
 learningRate = 0.1
 
@@ -60,8 +60,12 @@ weights = 'calc'    # None: unweighted.
                     # 'calc' : calculated weights to use
                 
 # file to load and optional file directory---can leave undefined '' or '.'
-inputTrain = 'pisces50to600.train.txt'
-inputTest = 'pisces50to600.test.txt'
+#inputTrain = 'pisces50to600.train.txt'
+#inputTest = 'pisces50to600.test.txt'
+inputTrain = 'test.txt'
+inputTest = 'test.txt'
+
+
 fileDirectory = 'data'
 
 targetLabels = ['H', 'E', 'C']
@@ -72,12 +76,14 @@ targetLabels = ['H', 'E', 'C']
 xTest, yTest = dataReader(os.path.join(fileDirectory, inputTest), 
                           lengths=lengthLimits, 
                           crop=cropSize, 
-                          onehot=False)
+                          onehot=(False,True) )
+#yTest.swapaxes_(1, 2)   # put in correct order for CNN
 xTrain, yTrain = dataReader(os.path.join(fileDirectory, inputTrain), 
                             lengths=lengthLimits, 
                             crop=cropSize, 
-                            onehot=False)
-dataTrain = seqDataset(xTrain, yTrain) # needed for batches
+                            onehot=(False,True) )
+#yTrain.swapaxes_(1, 2)   # put in correct order for CNN
+dataTrain = seqDataset(xTrain, yTrain.swapaxes(1, 2) ) # needed for batches
 
 # print data/batch stats ------------------------------------
 print("DATA SET")
@@ -95,7 +101,10 @@ else:
     numBatches = int(len(xTrain)/batchSize)
 
 # create weights for classes--should broadcast correctly in loss calc
-uniqueClasses, numClasses = np.unique(yTrain, return_counts=True)
+yMask = yTrain.sum(axis=2).detach().numpy()
+yClasses = np.argmax(yTrain.detach().numpy(), axis=2)
+yAdjusted = yClasses + yMask
+uniqueClasses, numClasses = np.unique(yAdjusted, return_counts=True)
 uniqueClasses = np.delete( uniqueClasses, np.where(uniqueClasses==0))
 numClasses = numClasses[1:]
 if not weights:
@@ -108,7 +117,7 @@ weights = torch.tensor(weights)
 print('{:<10} {:<10} {:<10} {:<10} {:<10}'.format('index','label','count','fraction','weight') )
 for i,tl in enumerate(targetLabels):
     print('{:<10} {:<10} {:<10} {:<10.4} {:<10.4}'.format(
-        i,tl,int(numClasses[i]),numClasses[i]/numClasses.sum(), float(weights[i,0]) 
+        i,tl,int(numClasses[i]),numClasses[i]/numClasses.sum(), float(weights[i]) 
         ) )
 print('number of batches:', numBatches)
 print('size of batches:', batchSize)
