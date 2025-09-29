@@ -32,20 +32,14 @@ class cnnModel(torch.nn.Module):
                          ( 5, 5, 11, torch.nn.ReLU() ),
                          ( 5, 5, 11, torch.nn.ReLU() )
                        )
-        paramsLast = ( 5, 3, 11 )  # lacks activation
+        paramsLast = ( 5, 3, 11 )  
         
-        # embedding transformation, input tensor must have dims (*,20), output
-        # will have (*,5). since CNN uses (*,channels,length), must swap last
-        # two dims before and after use
-        
-        # try using torch.nn.Embedding... will convert list of indices to 
-        # embedding vector (so input rep. is not oneHot vector, but list of
-        # res. #'s). Has feature that can fix padding index so that embedding
+        # embedding transformation, input tensor must have dims (*), output
+        # will have (*,self.ed). since CNN uses (*,channels,length), must swap last
+        # two dims afterward. Has feature that can fix padding index so that embedding
         # coeffs for that are not updated---converts to 0.
         self.embedding = torch.nn.Embedding( 21, self.ed, padding_idx=self.padidx )
      
-        # input channels = number of AA's +1 for padding. pad so that
-        # output is same length as input, padding character = 0
         # layer parameters = (input chans, output chans, kernel)
         convLayers= []; batchLayers = []; activLayers =[]
         for inch, outch, ksize, afunc in paramsHidden:
@@ -73,17 +67,20 @@ class cnnModel(torch.nn.Module):
         self.outActiv = torch.nn.Softmax( dim = 1 )
 
     ###########################################################################
-    def forward(self, x):
+    def forward(self, x ):
         '''
         
         Args:
-            x (TYPE): DESCRIPTION.
-            mask (TYPE): DESCRIPTION.
+            x (TYPE): data batch, with shape (N,length)
+            mask (TYPE): binary mask, with shape (N,1,length) to matmult with
+            any x of shape (N,channels,length)
 
         Returns:
             x (TYPE): DESCRIPTION.
 
         '''
+        
+        mask = torch.where( x==0, 0.0, 1.0 ).unsqueeze(1)
 
         # since CNN uses (*, channels, length), must swap last two dims after 
         # embedding operation which produces (*, length, embedding_dims)
@@ -99,9 +96,14 @@ class cnnModel(torch.nn.Module):
             x = bl(x)
             x = al(x)
             # add a zero-ing out step here, to set padded regions=0
+            x = x * mask
+            
+            
             
         x = self.outLayer(x)
         x = self.outBatch(x)
+        x = x * mask
         x = self.outActiv(x)
 
-        return x
+
+        return x 

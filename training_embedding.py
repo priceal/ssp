@@ -35,7 +35,7 @@ from sklearn.utils.class_weight import compute_class_weight
 import matplotlib.pyplot as plt
 
 from ssp_utils import dataReader, seqDataset
-from model_20250924_embed import cnnModel
+from model_20250926 import cnnModel
 
 '''
 ###############################################################################
@@ -44,12 +44,12 @@ from model_20250924_embed import cnnModel
 '''
 
 # learning parameters
-lengthLimits = (0,10)  # screen data for seq lengths in this interval
-cropSize = 10  # crop/pad all accepted seqs to this length
+lengthLimits = (0,1000)  # screen data for seq lengths in this interval
+cropSize = 300  # crop/pad all accepted seqs to this length
 
 numBatches = 0 # if non-zero, ignore batchSize and set to N/numBatches
-batchSize = 1  # only use if numBatches = 0
-numberEpochs = 3
+batchSize = 64 # only use if numBatches = 0
+numberEpochs = 50
 learningRate = 0.1
 
 reportCycle = 29
@@ -60,10 +60,10 @@ weights = 'calc'    # None: unweighted.
                     # 'calc' : calculated weights to use
                 
 # file to load and optional file directory---can leave undefined '' or '.'
-#inputTrain = 'pisces50to600.train.txt'
-#inputTest = 'pisces50to600.test.txt'
-inputTrain = 'test.txt'
-inputTest = 'test.txt'
+inputTrain = 'pisces50to600.train.txt'
+inputTest = 'pisces50to600.test.txt'
+#inputTrain = 'test.txt'
+#inputTest = 'test.txt'
 
 
 fileDirectory = 'data'
@@ -71,20 +71,23 @@ fileDirectory = 'data'
 targetLabels = ['H', 'E', 'C']
 
 ###########################################################################
+###########################################################################
+###########################################################################
 
 # load data -------------------------------------------
 xTest, yTest = dataReader(os.path.join(fileDirectory, inputTest), 
                           lengths=lengthLimits, 
                           crop=cropSize, 
                           onehot=(False,True) )
-#yTest.swapaxes_(1, 2)   # put in correct order for CNN
+yTest.swapaxes_(1, 2)   # put in correct order for loss calculation
 xTrain, yTrain = dataReader(os.path.join(fileDirectory, inputTrain), 
                             lengths=lengthLimits, 
                             crop=cropSize, 
                             onehot=(False,True) )
-#yTrain.swapaxes_(1, 2)   # put in correct order for CNN
-dataTrain = seqDataset(xTrain, yTrain.swapaxes(1, 2) ) # needed for batches
+yTrain.swapaxes_(1, 2)   # put in correct order for CNN
+dataTrain = seqDataset(xTrain, yTrain ) # needed for batches
 
+###########################################################################
 # print data/batch stats ------------------------------------
 print("DATA SET")
 print("{:<20} {:<15} {:<15}".format('DATA', 'ENTRIES', 'LENGTH'))
@@ -94,15 +97,10 @@ for r, d in zip(rows, ds):
     a, b = d.shape
     print(f"{r:<20} {a:<15} {b:<15}")
 
-# determine batch size and number of batches -----------------------    
-if numBatches > 0:
-    batchSize = int(len(xTrain)/numBatches)
-else:
-    numBatches = int(len(xTrain)/batchSize)
-
+###########################################################################
 # create weights for classes--should broadcast correctly in loss calc
-yMask = yTrain.sum(axis=2).detach().numpy()
-yClasses = np.argmax(yTrain.detach().numpy(), axis=2)
+yMask = yTrain.sum(axis=1).detach().numpy()
+yClasses = np.argmax(yTrain.detach().numpy(), axis=1)
 yAdjusted = yClasses + yMask
 uniqueClasses, numClasses = np.unique(yAdjusted, return_counts=True)
 uniqueClasses = np.delete( uniqueClasses, np.where(uniqueClasses==0))
@@ -112,7 +110,13 @@ if not weights:
 elif weights=='calc':
     weights = numClasses.sum()/numClasses/3 # dims=(3)
 # add dim in place to get dims = (3,1) for broadcasting
-weights = torch.tensor(weights)
+weights = torch.tensor(weights).unsqueeze_(1)
+
+# determine batch size and number of batches -----------------------    
+if numBatches > 0:
+    batchSize = int(len(xTrain)/numBatches)
+else:
+    numBatches = int(len(xTrain)/batchSize)
 
 print('{:<10} {:<10} {:<10} {:<10} {:<10}'.format('index','label','count','fraction','weight') )
 for i,tl in enumerate(targetLabels):
@@ -123,6 +127,7 @@ print('number of batches:', numBatches)
 print('size of batches:', batchSize)
 dataloader = DataLoader(dataTrain, batch_size=batchSize, shuffle=True)
 
+###########################################################################
 # create model ----------------------------------------------------
 if not refine:     # if refining pre-existing, don't create new model
     model = cnnModel()
@@ -137,28 +142,23 @@ for name, parameter in model.named_parameters():
     total_params += params
 print("{0:20} {1:<20}".format("TOTAL", total_params))
 
+###########################################################################
 # run cycles of optimization ----------------------------------------
 plt.figure(1)
 optimizer = torch.optim.SGD(model.parameters(), lr=learningRate)
-lossFunc = torch.nn.CrossEntropyLoss( weight=weights,
-                                 ignore_index=-1
-                                 )
+#lossFunc = torch.nn.CrossEntropyLoss( weight=weights,ignore_index=-1)
 print('\nOPTIMIZATION')
 print('{:10} {:10} {:10} {:10}'.format('epoch','batch','loss-train','loss-test') )
 stepCount = 0
 for i in range(numberEpochs):
     for j, batch in enumerate(dataloader):
         
-        # calculate and display loss, then back propagate
         xx, yy = batch[0], batch[1]
-        
-        # make the mask, sum along axis=1 (channels) to get 1 in each valid
-        # position, 0 in  cropped. then add summed dim back (unsqueeze)
+        yyMask = yy.sum(axis=1).unsqueeze(1)
         prediction = model(xx)
         
-        #lossTerms = -yy*torch.log(prediction)*weights*yymask
-        #loss = lossTerms.sum()/yy.shape.numel() # normalize by num of AAs
-        loss = lossFunc( prediction, yy )
+        lossTerms = -yy*torch.log(prediction)*weights
+        loss = lossTerms.sum()/yy.shape.numel() # normalize by num of AAs
         
         optimizer.zero_grad()
         loss.backward()
@@ -169,7 +169,7 @@ for i in range(numberEpochs):
             
             # calc test loss
             testPrediction = model( xTest ) 
-            testLossTerms = -yTest*torch.log(testPrediction)*weights
+            testLossTerms = -yTest*torch.log(testPrediction,)*weights
             testLoss = testLossTerms.sum()/yTest.shape.numel() # normalize by num of AAs
             print(f"{i:<10} {j:<10} {loss.item():<10.5} {testLoss.item():<10.5}")
             plt.plot([stepCount], [loss.item()], '.k')
@@ -179,6 +179,7 @@ for i in range(numberEpochs):
 
 plt.show()
 
+###########################################################################
 # metrics -------------------------------------------------------
 # must convert probability-logits to one-hots ---
 # convert max logit value to 1, others 0
